@@ -104,7 +104,7 @@ public class DataCollectActivity extends Activity implements SensorEventListener
                     info.setText(info.getText() + "\n\n" + "\t" + dataFileName);
 
                 for (Sensor sensor : sensors)
-                    sensorManager.registerListener(DataCollectActivity.this, sensor, SensorManager.SENSOR_DELAY_FASTEST);
+                    sensorManager.registerListener(DataCollectActivity.this, sensor, 10000);
 
                 try {
                     dataFileWriter = new DataFileWriter(FOLDER_NAME, ExtraFunctions.arrayToList(DATA_FILE_NAMES), ExtraFunctions.arrayToList(DATA_FILE_HEADINGS));
@@ -165,7 +165,7 @@ public class DataCollectActivity extends Activity implements SensorEventListener
 
         if (wasRunning) {
             for (Sensor sensor : sensors)
-                sensorManager.registerListener(DataCollectActivity.this, sensor, SensorManager.SENSOR_DELAY_FASTEST);
+                sensorManager.registerListener(DataCollectActivity.this, sensor, 10000);
             enableStopButton();
         } else {
             enableStartButton();

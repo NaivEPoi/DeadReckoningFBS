@@ -53,12 +53,18 @@ public class StepCalibrationActivity extends Activity implements SensorEventList
         //defining variables
         stepCount = 0;
 
-        dynamicStepCounters = new DynamicStepCounter[20];
+        dynamicStepCounters = new DynamicStepCounter[50];
 
-        double sensitivity = 0.5;
-        for (int i = 0; i < dynamicStepCounters.length; i++) {
+        double sensitivity = 1.3;
+        for (int i = dynamicStepCounters.length/2; i >= 0; i--) {
             dynamicStepCounters[i] = new DynamicStepCounter(sensitivity);
-            sensitivity += 0.05;
+            sensitivity -= 0.025;
+        }
+
+        sensitivity = 1.3;
+        for (int i = dynamicStepCounters.length/2; i < dynamicStepCounters.length; i++) {
+            dynamicStepCounters[i] = new DynamicStepCounter(sensitivity);
+            sensitivity += 0.025;
         }
 
         //defining views
@@ -79,8 +85,8 @@ public class StepCalibrationActivity extends Activity implements SensorEventList
         buttonStartCalibration.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                sensorManager.registerListener(StepCalibrationActivity.this, linearAcceleration, SensorManager.SENSOR_DELAY_FASTEST);
-                sensorManager.registerListener(StepCalibrationActivity.this, androidStepCounter, SensorManager.SENSOR_DELAY_FASTEST);
+                sensorManager.registerListener(StepCalibrationActivity.this, linearAcceleration, 10000);
+                sensorManager.registerListener(StepCalibrationActivity.this, androidStepCounter, 10000);
 
                 buttonStartCalibration.setEnabled(false);
                 buttonSetStrideLength.setEnabled(false);
@@ -121,7 +127,8 @@ public class StepCalibrationActivity extends Activity implements SensorEventList
             public void onClick(View v) {
                 double strideLength;
                 if (stepCount != 0) {
-                    strideLength = (double) Integer.parseInt(textCalibrationDistance.getText().toString()) / stepCount;
+                    // strideLength = (double) Integer.parseInt(textCalibrationDistance.getText().toString()) / stepCount;
+                    strideLength = Double.valueOf(textCalibrationDistance.getText().toString()) / stepCount;
                 } else {
                     Toast.makeText(getApplication(), "Take a few steps first!", Toast.LENGTH_SHORT).show();
                     return;
@@ -153,8 +160,8 @@ public class StepCalibrationActivity extends Activity implements SensorEventList
         super.onResume();
 
         if (wasRunning) {
-            sensorManager.registerListener(StepCalibrationActivity.this, linearAcceleration, SensorManager.SENSOR_DELAY_FASTEST);
-            sensorManager.registerListener(StepCalibrationActivity.this, androidStepCounter, SensorManager.SENSOR_DELAY_FASTEST);
+            sensorManager.registerListener(StepCalibrationActivity.this, linearAcceleration, 10000);
+            sensorManager.registerListener(StepCalibrationActivity.this, androidStepCounter, 10000);
 
             buttonStartCalibration.setEnabled(false);
             buttonSetStrideLength.setEnabled(false);

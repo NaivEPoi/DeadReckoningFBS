@@ -1,13 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion '28.0.3'
+    compileSdk 33
 
     defaultConfig {
         applicationId "nisargpatel.deadreckoning"
-        minSdkVersion 22
-        targetSdkVersion 27
+        minSdk 30
+        targetSdk 33
         versionCode 1
         versionName "1.0"
     }

@@ -97,7 +97,7 @@ public class MagCalibrationDialogFragment extends DialogFragment implements Sens
                     dataFileWriter.writeToFile("Magnetic_Field_Uncalibrated", "Calculated_bias: " + Arrays.toString(magneticFieldBias.getBias()));
                     dismissDialog();
                 } else {
-                    sensorManager.registerListener(MagCalibrationDialogFragment.this, sensorMagneticField, SensorManager.SENSOR_DELAY_FASTEST);
+                    sensorManager.registerListener(MagCalibrationDialogFragment.this, sensorMagneticField, 10000);
 
                     isRunning = true;
                     buttonNeutral.setText("Stop Calibration");

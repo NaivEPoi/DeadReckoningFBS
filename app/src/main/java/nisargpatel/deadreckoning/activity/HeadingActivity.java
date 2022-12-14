@@ -107,10 +107,10 @@ public class HeadingActivity extends Activity implements SensorEventListener{
         sensorMagU = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         sensorGravity = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
 
-        sensorManager.registerListener(HeadingActivity.this, sensorGyroU, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(HeadingActivity.this, sensorGyroC, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(HeadingActivity.this, sensorMagU, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(HeadingActivity.this, sensorGravity, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(HeadingActivity.this, sensorGyroU, 10000);
+        sensorManager.registerListener(HeadingActivity.this, sensorGyroC, 10000);
+        sensorManager.registerListener(HeadingActivity.this, sensorMagU, 10000);
+        sensorManager.registerListener(HeadingActivity.this, sensorGravity, 10000);
 
         buttonStart.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -178,10 +178,10 @@ public class HeadingActivity extends Activity implements SensorEventListener{
     protected void onResume() {
         super.onResume();
         if (isRunning) {
-            sensorManager.registerListener(HeadingActivity.this, sensorGyroU, SensorManager.SENSOR_DELAY_FASTEST);
-            sensorManager.registerListener(HeadingActivity.this, sensorGyroC, SensorManager.SENSOR_DELAY_FASTEST);
-            sensorManager.registerListener(HeadingActivity.this, sensorMagU, SensorManager.SENSOR_DELAY_FASTEST);
-            sensorManager.registerListener(HeadingActivity.this, sensorGravity, SensorManager.SENSOR_DELAY_FASTEST);
+            sensorManager.registerListener(HeadingActivity.this, sensorGyroU, 10000);
+            sensorManager.registerListener(HeadingActivity.this, sensorGyroC, 10000);
+            sensorManager.registerListener(HeadingActivity.this, sensorMagU, 10000);
+            sensorManager.registerListener(HeadingActivity.this, sensorGravity, 10000);
 
             buttonStart.setEnabled(false);
             buttonStop.setEnabled(true);

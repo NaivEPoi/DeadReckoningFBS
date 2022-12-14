@@ -1,30 +1,42 @@
 package nisargpatel.deadreckoning.activity;
 
+import static android.telephony.CellInfo.CONNECTION_PRIMARY_SERVING;
+
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
+//import android.location.Location;
+//import android.location.LocationListener;
+//import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.telephony.CellInfo;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import nisargpatel.deadreckoning.R;
 import nisargpatel.deadreckoning.extra.ExtraFunctions;
@@ -35,9 +47,10 @@ import nisargpatel.deadreckoning.orientation.GyroscopeEulerOrientation;
 import nisargpatel.deadreckoning.orientation.MagneticFieldOrientation;
 import nisargpatel.deadreckoning.stepcounting.DynamicStepCounter;
 
-public class GraphActivity extends AppCompatActivity implements SensorEventListener, LocationListener {
+//public class GraphActivity extends AppCompatActivity implements SensorEventListener, LocationListener {
+public class GraphActivity extends AppCompatActivity implements SensorEventListener {
 
-    private static final long GPS_SECONDS_PER_WEEK = 511200L;
+    // private static final long GPS_SECONDS_PER_WEEK = 511200L;
 
     private static final float GYROSCOPE_INTEGRATION_SENSITIVITY = 0.0025f;
 
@@ -56,7 +69,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             "Gyroscope_Uncalibrated" + "\n" + "t;uGx;uGy;uGz;xBias;yBias;zBias;heading",
             "Magnetic_Field_Uncalibrated" + "\n" + "t;uMx;uMy;uMz;xBias;yBias;zBias;heading",
             "Gravity" + "\n" + "t;gx;gy;gz",
-            "XY_Data_Set" + "\n" + "weekGPS;secGPS;t;strideLength;magHeading;gyroHeading;originalPointX;originalPointY;rotatedPointX;rotatedPointY"
+            //"XY_Data_Set" + "\n" + "weekGPS;secGPS;t;strideLength;magHeading;gyroHeading;originalPointX;originalPointY;rotatedPointX;rotatedPointY"
+            "XY_Data_Set" + "\n" + "t;strideLength;magHeading;gyroHeading;originalPointX;originalPointY;rotatedPointX;rotatedPointY"
     };
 
     private DynamicStepCounter dynamicStepCounter;
@@ -69,7 +83,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
     private LinearLayout mLinearLayout;
 
     private SensorManager sensorManager;
-    private LocationManager locationManager;
+    // private LocationManager locationManager;
 
     float[] gyroBias;
     float[] magBias;
@@ -83,19 +97,33 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
     private float strideLength;
     private float gyroHeading;
     private float magHeading;
-    private float weeksGPS;
-    private float secondsGPS;
+    // private float weeksGPS;
+    // private float secondsGPS;
 
     private long startTime;
     private boolean firstRun;
 
     private float initialHeading;
 
+    //for getting cellinfo
+    private TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+    private int prevPci = -1;
+    private int getPci(CellIdentity cellIdentity) {
+        if (cellIdentity instanceof CellIdentityLte) {
+            return ((CellIdentityLte) cellIdentity).getPci();
+        }
+        else if (cellIdentity instanceof CellIdentityNr) {
+                return ((CellIdentityNr) cellIdentity).getPci();
+        }
+        return -2;
+    }
+
     @TargetApi(Build.VERSION_CODES.KITKAT)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_graph);
+
 
         // get location permission
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -108,6 +136,14 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             },0);
             finish();
         }
+/*
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(GraphActivity.this, new String[] {
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+            },0);
+            finish();
+        }
+*/
 
         //defining needed variables
         gyroBias = null;
@@ -121,7 +157,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
         firstRun = true;
         strideLength = 0;
         initialHeading = gyroHeading = magHeading = 0;
-        weeksGPS = secondsGPS = 0;
+        // weeksGPS = secondsGPS = 0;
         startTime = 0;
 
         //getting global settings
@@ -159,39 +195,39 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
         Toast.makeText(GraphActivity.this, "Stride Length: " + strideLength, Toast.LENGTH_SHORT).show();
 
         //starting GPS location tracking
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, GraphActivity.this);
+        // locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, GraphActivity.this);
 
         //starting sensors
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         sensorManager.registerListener(GraphActivity.this,
                 sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY),
-                SensorManager.SENSOR_DELAY_FASTEST);
+                10000);
 
         if (isCalibrated) {
             sensorManager.registerListener(GraphActivity.this,
                     sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED),
-                    SensorManager.SENSOR_DELAY_FASTEST);
+                    10000);
             sensorManager.registerListener(GraphActivity.this,
                     sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED),
-                    SensorManager.SENSOR_DELAY_FASTEST);
+                    10000);
         } else {
             sensorManager.registerListener(GraphActivity.this,
                     sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
-                    SensorManager.SENSOR_DELAY_FASTEST);
+                    10000);
             sensorManager.registerListener(GraphActivity.this,
                     sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-                    SensorManager.SENSOR_DELAY_FASTEST);
+                    10000);
         }
 
         if (usingDefaultCounter) {
             sensorManager.registerListener(GraphActivity.this,
                     sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR),
-                    SensorManager.SENSOR_DELAY_FASTEST);
+                    10000);
         } else {
             sensorManager.registerListener(GraphActivity.this,
                     sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-                    SensorManager.SENSOR_DELAY_FASTEST);
+                    10000);
         }
 
         //setting up buttons
@@ -248,6 +284,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
 
             }
+
+
         });
 
         mLinearLayout.setOnClickListener(new View.OnClickListener() {
@@ -279,13 +317,55 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             }
         });
 
+        // start cellinfo tracking
+        Looper looper = getMainLooper();
+        Handler handler = new Handler(looper);
+        Runnable runnable = new Runnable() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void run() {
+                handler.postDelayed(this, 10000);
+                TelephonyManager.CellInfoCallback callback = new TelephonyManager.CellInfoCallback() {
+                    @Override
+                    public void onCellInfo(@NonNull List<CellInfo> cellInfo) {
+                        cellInfo.forEach(it -> {
+                            if (it.getCellConnectionStatus() == CONNECTION_PRIMARY_SERVING) {
+                                Log.d("Current serving cell", it.toString());
+//                                String s = "No Cell Found\n";
+//                                s = it.getCellIdentity().toString() + "\n" +
+//                                        it.getCellSignalStrength().getDbm() + "\n" +
+//                                        it.getTimestampMillis();
+                                if (prevPci == -1) {
+                                    prevPci = getPci(it.getCellIdentity());
+                                }
+                                else {
+                                    int currPci = getPci(it.getCellIdentity());
+                                    if (currPci == -2) {
+                                        Toast.makeText(getApplicationContext(),
+                                                "Downgrade Detected!", Toast.LENGTH_SHORT).show();
+                                        prevPci = currPci;
+                                    }
+                                    else if (currPci != prevPci) {
+                                        Toast.makeText(getApplicationContext(),
+                                                "Cell Change Detected!", Toast.LENGTH_SHORT).show();
+                                        prevPci = currPci;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                };
+                telephonyManager.requestCellInfoUpdate(getMainExecutor(), callback);
+            }
+        };
+        handler.post(runnable);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         sensorManager.unregisterListener(this);
-        locationManager.removeUpdates(this);
+        // locationManager.removeUpdates(this);
     }
 
     @Override
@@ -294,6 +374,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
         if (isRunning) {
 
+            /*
             // get location permission
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                     || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -308,30 +389,39 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, GraphActivity.this);
 
+             */
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(GraphActivity.this, new String[] {
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                },0);
+                finish();
+            }
+
             if (isCalibrated) {
                 sensorManager.registerListener(GraphActivity.this,
                         sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED),
-                        SensorManager.SENSOR_DELAY_FASTEST);
+                        10000);
                 sensorManager.registerListener(GraphActivity.this,
                         sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED),
-                        SensorManager.SENSOR_DELAY_FASTEST);
+                        10000);
             } else {
                 sensorManager.registerListener(GraphActivity.this,
                         sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
-                        SensorManager.SENSOR_DELAY_FASTEST);
+                        10000);
                 sensorManager.registerListener(GraphActivity.this,
                         sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-                        SensorManager.SENSOR_DELAY_FASTEST);
+                        10000);
             }
 
             if (usingDefaultCounter) {
                 sensorManager.registerListener(GraphActivity.this,
                         sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR),
-                        SensorManager.SENSOR_DELAY_FASTEST);
+                        10000);
             } else {
                 sensorManager.registerListener(GraphActivity.this,
                         sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-                        SensorManager.SENSOR_DELAY_FASTEST);
+                        10000);
             }
 
             fabButton.setImageDrawable(ContextCompat.getDrawable(GraphActivity.this, R.drawable.ic_pause_black_24dp));
@@ -444,8 +534,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
                     //saving XY location data
                     dataFileWriter.writeToFile("XY_Data_Set",
-                            weeksGPS,
-                            secondsGPS,
+                            // weeksGPS,
+                            // secondsGPS,
                             (event.timestamp - startTime),
                             strideLength,
                             magHeading,
@@ -494,8 +584,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
                     //saving XY location data
                     dataFileWriter.writeToFile("XY_Data_Set",
-                            weeksGPS,
-                            secondsGPS,
+                            // weeksGPS,
+                            // secondsGPS,
                             (event.timestamp - startTime),
                             strideLength,
                             magHeading,
@@ -514,6 +604,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
     }
 
+    /*
     @Override
     public void onLocationChanged(Location location) {
         long GPSTimeSec = location.getTime() / 1000;
@@ -530,6 +621,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
     @Override
     public void onProviderDisabled(String provider) {}
 
+     */
+
     private void createFiles() {
         if (!areFilesCreated) {
             try {
@@ -540,6 +633,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             areFilesCreated = true;
         }
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -550,7 +644,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                     Toast.makeText(GraphActivity.this, "Thank you for providing permission!", Toast.LENGTH_SHORT).show();
                     finish();
                 } else {
-                    Toast.makeText(GraphActivity.this, "Need location permission to create tour.", Toast.LENGTH_LONG).show();
+                    // Toast.makeText(GraphActivity.this, "Need location permission to create tour.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(GraphActivity.this, "Need file permission to create tour.", Toast.LENGTH_LONG).show();
                     finish();
                 }
                 break;

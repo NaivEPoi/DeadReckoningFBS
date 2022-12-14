@@ -92,9 +92,9 @@ public class StepCountActivity extends Activity implements SensorEventListener{
                 //TODO: enable this
                 //staticStepCounters[0].setThresholds(upperThreshold, lowerThreshold);
 
-                sensorManager.registerListener(StepCountActivity.this, sensorAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-                sensorManager.registerListener(StepCountActivity.this, sensorLinearAcceleration, SensorManager.SENSOR_DELAY_FASTEST);
-                sensorManager.registerListener(StepCountActivity.this, sensorStepDetector, SensorManager.SENSOR_DELAY_FASTEST);
+                sensorManager.registerListener(StepCountActivity.this, sensorAccelerometer, 10000);
+                sensorManager.registerListener(StepCountActivity.this, sensorLinearAcceleration, 10000);
+                sensorManager.registerListener(StepCountActivity.this, sensorStepDetector, 10000);
 
                 buttonStartCounter.setEnabled(false);
                 buttonStopCounter.setEnabled(true);
@@ -146,8 +146,8 @@ public class StepCountActivity extends Activity implements SensorEventListener{
         super.onResume();
 
         if (wasRunning) {
-            sensorManager.registerListener(StepCountActivity.this, sensorAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-            sensorManager.registerListener(StepCountActivity.this, sensorStepDetector, SensorManager.SENSOR_DELAY_FASTEST);
+            sensorManager.registerListener(StepCountActivity.this, sensorAccelerometer, 10000);
+            sensorManager.registerListener(StepCountActivity.this, sensorStepDetector, 10000);
 
             buttonStartCounter.setEnabled(false);
             buttonStopCounter.setEnabled(true);

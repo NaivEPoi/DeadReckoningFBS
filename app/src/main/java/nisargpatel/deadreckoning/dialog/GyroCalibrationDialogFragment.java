@@ -98,7 +98,7 @@ public class GyroCalibrationDialogFragment extends DialogFragment implements Sen
         buttonNeutral.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                sensorManager.registerListener(GyroCalibrationDialogFragment.this, sensorGyroscopeU, SensorManager.SENSOR_DELAY_FASTEST);
+                sensorManager.registerListener(GyroCalibrationDialogFragment.this, sensorGyroscopeU, 10000);
                 progressDialog = ProgressDialog.show(getActivity(), "Calibrating", "Please wait.", true, false);
             }
         });

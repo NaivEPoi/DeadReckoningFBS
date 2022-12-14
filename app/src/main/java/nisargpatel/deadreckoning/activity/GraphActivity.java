@@ -2,6 +2,7 @@ package nisargpatel.deadreckoning.activity;
 
 import static android.telephony.CellInfo.CONNECTION_PRIMARY_SERVING;
 
+import java.lang.Math.*;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -90,6 +91,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
     float[] currGravity; //current gravity
     float[] currMag; //current magnetic field
 
+    private int count = 0;
     private boolean isRunning;
     private boolean isCalibrated;
     private boolean usingDefaultCounter;
@@ -102,18 +104,19 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
     private long startTime;
     private boolean firstRun;
+    private float newX = 0, newY = 0, prevX = 0, prevY = 0;
 
     private float initialHeading;
 
     //for getting cellinfo
-    private TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+    private TelephonyManager telephonyManager;
     private int prevPci = -1;
+
     private int getPci(CellIdentity cellIdentity) {
         if (cellIdentity instanceof CellIdentityLte) {
             return ((CellIdentityLte) cellIdentity).getPci();
-        }
-        else if (cellIdentity instanceof CellIdentityNr) {
-                return ((CellIdentityNr) cellIdentity).getPci();
+        } else if (cellIdentity instanceof CellIdentityNr) {
+            return ((CellIdentityNr) cellIdentity).getPci();
         }
         return -2;
     }
@@ -124,16 +127,16 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_graph);
 
-
+        telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         // get location permission
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 || ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(GraphActivity.this, new String[] {
+            ActivityCompat.requestPermissions(GraphActivity.this, new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
-            },0);
+            }, 0);
             finish();
         }
 /*
@@ -241,21 +244,21 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
                     createFiles();
 
-                    if (usingDefaultCounter)
-                        dataFileWriter.writeToFile("Linear_Acceleration",
-                                "TYPE_LINEAR_ACCELERATION will not be recorded, since the TYPE_STEP_DETECTOR is being used instead."
-                        );
+                    //if (usingDefaultCounter)
+                    //dataFileWriter.writeToFile("Linear_Acceleration",
+                    //        "TYPE_LINEAR_ACCELERATION will not be recorded, since the TYPE_STEP_DETECTOR is being used instead."
+                    //);
 
                     float[][] initialOrientation = MagneticFieldOrientation.getOrientationMatrix(currGravity, currMag, magBias);
                     initialHeading = MagneticFieldOrientation.getHeading(currGravity, currMag, magBias);
 
                     //saving initial orientation data
-                    dataFileWriter.writeToFile("Initial_Orientation", "init_Gravity: " + Arrays.toString(currGravity));
-                    dataFileWriter.writeToFile("Initial_Orientation", "init_Mag: " + Arrays.toString(currMag));
-                    dataFileWriter.writeToFile("Initial_Orientation", "mag_Bias: " + Arrays.toString(magBias));
-                    dataFileWriter.writeToFile("Initial_Orientation", "gyro_Bias: " + Arrays.toString(gyroBias));
-                    dataFileWriter.writeToFile("Initial_Orientation", "init_Orientation: " + Arrays.deepToString(initialOrientation));
-                    dataFileWriter.writeToFile("Initial_Orientation", "init_Heading: " + initialHeading);
+                    //dataFileWriter.writeToFile("Initial_Orientation", "init_Gravity: " + Arrays.toString(currGravity));
+                    //dataFileWriter.writeToFile("Initial_Orientation", "init_Mag: " + Arrays.toString(currMag));
+                    //dataFileWriter.writeToFile("Initial_Orientation", "mag_Bias: " + Arrays.toString(magBias));
+                    //dataFileWriter.writeToFile("Initial_Orientation", "gyro_Bias: " + Arrays.toString(gyroBias));
+                    //dataFileWriter.writeToFile("Initial_Orientation", "init_Orientation: " + Arrays.deepToString(initialOrientation));
+                    //dataFileWriter.writeToFile("Initial_Orientation", "init_Heading: " + initialHeading);
 
 //                Log.d("init_heading", "" + initialHeading);
 
@@ -264,12 +267,15 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
                     gyroscopeEulerOrientation = new GyroscopeEulerOrientation(ExtraFunctions.IDENTITY_MATRIX);
 
+                    /*
                     dataFileWriter.writeToFile("XY_Data_Set", "Initial_orientation: " +
                             Arrays.deepToString(initialOrientation));
                     dataFileWriter.writeToFile("Gyroscope_Uncalibrated", "Gyroscope_bias: " +
                             Arrays.toString(gyroBias));
                     dataFileWriter.writeToFile("Magnetic_Field_Uncalibrated", "Magnetic_field_bias:" +
                             Arrays.toString(magBias));
+
+                     */
 
                     fabButton.setImageDrawable(ContextCompat.getDrawable(GraphActivity.this, R.drawable.ic_pause_black_24dp));
 
@@ -308,7 +314,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                 //rotating points by 90 degrees, so north is up
                 float rPointX = -oPointY;
                 float rPointY = oPointX;
-
+                newX = rPointX;
+                newY = rPointY;
                 scatterPlot.addPoint(rPointX, rPointY);
 
                 mLinearLayout.removeAllViews();
@@ -317,18 +324,26 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             }
         });
 
+
+        /*
         // start cellinfo tracking
         Looper looper = getMainLooper();
         Handler handler = new Handler(looper);
         Runnable runnable = new Runnable() {
+
             @SuppressLint("MissingPermission")
             @Override
             public void run() {
+
                 handler.postDelayed(this, 10000);
+
                 TelephonyManager.CellInfoCallback callback = new TelephonyManager.CellInfoCallback() {
                     @Override
                     public void onCellInfo(@NonNull List<CellInfo> cellInfo) {
-                        cellInfo.forEach(it -> {
+                        Log.d("cellInfo size", String.valueOf(cellInfo.size()));
+                        for (int i = 0; i < cellInfo.size(); i++) {
+                            CellInfo it = cellInfo.get(i);
+                            Log.d("Current serving cell", it.toString());
                             if (it.getCellConnectionStatus() == CONNECTION_PRIMARY_SERVING) {
                                 Log.d("Current serving cell", it.toString());
 //                                String s = "No Cell Found\n";
@@ -352,13 +367,17 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                                     }
                                 }
                             }
-                        });
+                        }
                     }
                 };
                 telephonyManager.requestCellInfoUpdate(getMainExecutor(), callback);
             }
         };
         handler.post(runnable);
+
+         */
+
+
     }
 
     @Override
@@ -392,9 +411,9 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
              */
 
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(GraphActivity.this, new String[] {
+                ActivityCompat.requestPermissions(GraphActivity.this, new String[]{
                         Manifest.permission.WRITE_EXTERNAL_STORAGE
-                },0);
+                }, 0);
                 finish();
             }
 
@@ -435,12 +454,13 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
 
-        if(firstRun) {
+        if (firstRun) {
             startTime = event.timestamp;
             firstRun = false;
         }
@@ -454,11 +474,12 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 //            Log.d("mag_values", Arrays.toString(event.values));
         }
 
+
         if (isRunning) {
             if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
                 ArrayList<Float> dataValues = ExtraFunctions.arrayToList(event.values);
-                dataValues.add(0, (float)(event.timestamp - startTime));
-                dataFileWriter.writeToFile("Gravity", dataValues);
+                dataValues.add(0, (float) (event.timestamp - startTime));
+                //dataFileWriter.writeToFile("Gravity", dataValues);
             } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD || event.sensor.getType() ==
                     Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED) {
 
@@ -471,9 +492,9 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                         event.values[0], event.values[1], event.values[2],
                         magBias[0], magBias[1], magBias[2]
                 );
-                dataValues.add(0, (float)(event.timestamp - startTime));
+                dataValues.add(0, (float) (event.timestamp - startTime));
                 dataValues.add(magHeading);
-                dataFileWriter.writeToFile("Magnetic_Field_Uncalibrated", dataValues);
+                // dataFileWriter.writeToFile("Magnetic_Field_Uncalibrated", dataValues);
 
             } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE ||
                     event.sensor.getType() == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
@@ -490,9 +511,9 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                         event.values[0], event.values[1], event.values[2],
                         gyroBias[0], gyroBias[1], gyroBias[2]
                 );
-                dataValues.add(0, (float)(event.timestamp - startTime));
+                dataValues.add(0, (float) (event.timestamp - startTime));
                 dataValues.add(gyroHeading);
-                dataFileWriter.writeToFile("Gyroscope_Uncalibrated", dataValues);
+                // dataFileWriter.writeToFile("Gyroscope_Uncalibrated", dataValues);
 
             } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
 
@@ -509,9 +530,9 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
                     //saving linear acceleration data
                     ArrayList<Float> dataValues = ExtraFunctions.arrayToList(event.values);
-                    dataValues.add(0, (float)(event.timestamp - startTime));
+                    dataValues.add(0, (float) (event.timestamp - startTime));
                     dataValues.add(1f);
-                    dataFileWriter.writeToFile("Linear_Acceleration", dataValues);
+                    // dataFileWriter.writeToFile("Linear_Acceleration", dataValues);
 
                     //complimentary filter
                     float compHeading = ExtraFunctions.calcCompHeading(magHeading, gyroHeading);
@@ -530,8 +551,12 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                     float rPointX = -oPointY;
                     float rPointY = oPointX;
 
+                    newX = rPointX;
+                    newY = rPointY;
+
                     scatterPlot.addPoint(rPointX, rPointY);
 
+                    /*
                     //saving XY location data
                     dataFileWriter.writeToFile("XY_Data_Set",
                             // weeksGPS,
@@ -545,6 +570,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                             rPointX,
                             rPointY);
 
+                     */
+
                     mLinearLayout.removeAllViews();
                     mLinearLayout.addView(scatterPlot.getGraphView(getApplicationContext()));
 
@@ -554,7 +581,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                     ArrayList<Float> dataValues = ExtraFunctions.arrayToList(event.values);
                     dataValues.add(0, (float) event.timestamp);
                     dataValues.add(0f);
-                    dataFileWriter.writeToFile("Linear_Acceleration", dataValues);
+                    // dataFileWriter.writeToFile("Linear_Acceleration", dataValues);
                 }
 
             } else if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
@@ -579,9 +606,12 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                     //rotating points by 90 degrees, so north is up
                     float rPointX = -oPointY;
                     float rPointY = oPointX;
+                    newX = rPointX;
+                    newY = rPointY;
 
                     scatterPlot.addPoint(rPointX, rPointY);
 
+                    /*
                     //saving XY location data
                     dataFileWriter.writeToFile("XY_Data_Set",
                             // weeksGPS,
@@ -595,11 +625,96 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                             rPointX,
                             rPointY);
 
+                     */
+
                     mLinearLayout.removeAllViews();
                     mLinearLayout.addView(scatterPlot.getGraphView(getApplicationContext()));
                 }
 
             }
+
+            TelephonyManager.CellInfoCallback callback = new TelephonyManager.CellInfoCallback() {
+                @Override
+                public void onCellInfo(@NonNull List<CellInfo> cellInfo) {
+                    Log.d("cellInfo size", String.valueOf(cellInfo.size()));
+                    for (int i = 0; i < cellInfo.size(); i++) {
+                        CellInfo it = cellInfo.get(i);
+                        Log.d("Current serving cell", it.toString());
+                        if (it.getCellConnectionStatus() == CONNECTION_PRIMARY_SERVING) {
+                            Log.d("Current serving cell", it.toString());
+//                                String s = "No Cell Found\n";
+//                                s = it.getCellIdentity().toString() + "\n" +
+//                                        it.getCellSignalStrength().getDbm() + "\n" +
+//                                        it.getTimestampMillis();
+                            if (prevPci == -1) {
+                                prevPci = getPci(it.getCellIdentity());
+                            } else {
+                                int currPci = getPci(it.getCellIdentity());
+                                if (currPci == -2) {
+                                    Toast.makeText(getApplicationContext(),
+                                            "Downgrade Detected!", Toast.LENGTH_SHORT).show();
+                                    prevPci = currPci;
+                                } else if (currPci != prevPci) {
+                                    Log.d("x", Float.toString(newX));
+                                    Log.d("y", Float.toString(newY));
+                                    Log.d("prevx", Float.toString(prevX));
+                                    Log.d("prevy", Float.toString(prevY));
+
+
+
+                                    float dist = (float)Math.sqrt(Math.pow((double)(prevX - newX), 2) + Math.pow((double)(prevY - newY), 2));
+                                    Toast.makeText(getApplicationContext(),
+                                            "Cell Change Detected!\n" +
+                                                    "distance since last change: " + Float.toString(dist) + "feet", Toast.LENGTH_SHORT).show();
+
+
+                                    // Toast.makeText(getApplicationContext(),"Cell Change Detected!\n" , Toast.LENGTH_SHORT).show();
+                                    prevX = newX;
+                                    prevY = newY;
+                                    prevPci = currPci;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Log.d("no ACCESS_FINE_LOCATION", "ACCESS_FINE_LOCATION");
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            telephonyManager.requestCellInfoUpdate(getMainExecutor(), callback);
+
+            /* TODO:
+            count++;
+            // Log.d("count", String.valueOf(count));
+            if (count % 40000 == 0) {
+                Log.d("x", Float.toString(newX));
+                Log.d("y", Float.toString(newY));
+                Log.d("prevx", Float.toString(prevX));
+                Log.d("prevy", Float.toString(prevY));
+
+
+
+                float dist = (float)Math.sqrt(Math.pow((double)(prevX - newX), 2) + Math.pow((double)(prevY - newY), 2));
+                Toast.makeText(getApplicationContext(),
+                        "Cell Change Detected!\n" +
+                                "distance since last change: " + Float.toString(dist) + "feet", Toast.LENGTH_SHORT).show();
+
+
+                // Toast.makeText(getApplicationContext(),"Cell Change Detected!\n" , Toast.LENGTH_SHORT).show();
+                prevX = newX;
+                prevY = newY;
+            }
+
+             */
+
         }
 
     }
@@ -624,6 +739,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
      */
 
     private void createFiles() {
+        /*
         if (!areFilesCreated) {
             try {
                 dataFileWriter = new DataFileWriter(FOLDER_NAME, DATA_FILE_NAMES, DATA_FILE_HEADINGS);
@@ -632,6 +748,8 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             }
             areFilesCreated = true;
         }
+
+         */
     }
 
     @Override

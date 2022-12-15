@@ -90,8 +90,6 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
     float[] magBias;
     float[] currGravity; //current gravity
     float[] currMag; //current magnetic field
-
-    private int count = 0;
     private boolean isRunning;
     private boolean isCalibrated;
     private boolean usingDefaultCounter;
@@ -173,17 +171,23 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
         counterSensitivity = getIntent().getStringExtra("preferred_step_counter");
 
         //usingDefaultCounter is counterSensitivity = "default" and sensor is available
+        /*
         usingDefaultCounter = counterSensitivity.equals("default") &&
                 getIntent().getBooleanExtra("step_detector", false);
 
+         */
+
         //initializing needed classes
         gyroscopeDeltaOrientation = new GyroscopeDeltaOrientation(GYROSCOPE_INTEGRATION_SENSITIVITY, gyroBias);
-        if (usingDefaultCounter) //if using default TYPE_STEP_DETECTOR, don't need DynamicStepCounter
-            dynamicStepCounter = null;
-        else if (!counterSensitivity.equals("default"))
+        // if (usingDefaultCounter) //if using default TYPE_STEP_DETECTOR, don't need DynamicStepCounter
+        //    dynamicStepCounter = null;
+        if (!counterSensitivity.equals("default") && Double.parseDouble(counterSensitivity) > 0) {
             dynamicStepCounter = new DynamicStepCounter(Double.parseDouble(counterSensitivity));
-        else //if cannot use TYPE_STEP_DETECTOR but sensitivity = "default", use 1.0 sensitivity until user calibrates
-            dynamicStepCounter = new DynamicStepCounter(1.0);
+            Log.d("dynamicStepCounter",  counterSensitivity);
+        } else {//if cannot use TYPE_STEP_DETECTOR but sensitivity = "default", use 1.0 sensitivity until user calibrates
+            dynamicStepCounter = new DynamicStepCounter(1.4);
+            Log.d("dynamicStepCounter",  "default value");
+        }
 
         //defining views
         fabButton = findViewById(R.id.fab);
@@ -325,7 +329,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
         });
 
 
-        /*
+
         // start cellinfo tracking
         Looper looper = getMainLooper();
         Handler handler = new Handler(looper);
@@ -363,6 +367,19 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
                                     else if (currPci != prevPci) {
                                         Toast.makeText(getApplicationContext(),
                                                 "Cell Change Detected!", Toast.LENGTH_SHORT).show();
+                                        Log.d("x", Float.toString(newX));
+                                        Log.d("y", Float.toString(newY));
+                                        Log.d("prevx", Float.toString(prevX));
+                                        Log.d("prevy", Float.toString(prevY));
+
+
+
+                                        float dist = (float)Math.sqrt(Math.pow((double)(prevX - newX), 2) + Math.pow((double)(prevY - newY), 2));
+                                        Toast.makeText(getApplicationContext(),
+                                                "Cell Change Detected!\n" +
+                                                        "distance since last change: " + Float.toString(dist) + "feet", Toast.LENGTH_SHORT).show();
+                                        prevX = newX;
+                                        prevY = newY;
                                         prevPci = currPci;
                                     }
                                 }
@@ -375,7 +392,6 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
         };
         handler.post(runnable);
 
-         */
 
 
     }
@@ -633,6 +649,7 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
 
             }
 
+            /*
             TelephonyManager.CellInfoCallback callback = new TelephonyManager.CellInfoCallback() {
                 @Override
                 public void onCellInfo(@NonNull List<CellInfo> cellInfo) {
@@ -691,27 +708,6 @@ public class GraphActivity extends AppCompatActivity implements SensorEventListe
             }
             telephonyManager.requestCellInfoUpdate(getMainExecutor(), callback);
 
-            /* TODO:
-            count++;
-            // Log.d("count", String.valueOf(count));
-            if (count % 40000 == 0) {
-                Log.d("x", Float.toString(newX));
-                Log.d("y", Float.toString(newY));
-                Log.d("prevx", Float.toString(prevX));
-                Log.d("prevy", Float.toString(prevY));
-
-
-
-                float dist = (float)Math.sqrt(Math.pow((double)(prevX - newX), 2) + Math.pow((double)(prevY - newY), 2));
-                Toast.makeText(getApplicationContext(),
-                        "Cell Change Detected!\n" +
-                                "distance since last change: " + Float.toString(dist) + "feet", Toast.LENGTH_SHORT).show();
-
-
-                // Toast.makeText(getApplicationContext(),"Cell Change Detected!\n" , Toast.LENGTH_SHORT).show();
-                prevX = newX;
-                prevY = newY;
-            }
 
              */
 
